@@ -461,11 +461,11 @@ function update(dt) {
   }
 }
 
-function drawLayer(layer, factor) {
+function drawLayer(layer, factor, sizeMul) {
   if (!layer) return;
   const nw = layer.naturalWidth || layer.width || 1;
   const nh = layer.naturalHeight || layer.height || 1;
-  const scale = Math.max(W / nw, H / nh);
+  const scale = Math.max(W / nw, H / nh) * (sizeMul || 1);
   const sw = Math.max(1, Math.round(nw * scale));
   const sh = Math.max(1, Math.round(nh * scale));
   const dist = S.bgx * factor;
@@ -479,7 +479,7 @@ function drawBackground() {
   if (S.bgx > 1000000) S.bgx = S.bgx % 10000;
   drawLayer(img.bgFar, 0.15);
   drawLayer(img.bgMid, 0.35);
-  drawLayer(img.bgNear, 0.6);
+  drawLayer(img.bgNear, 0.6, 0.85);
 }
 
 function drawPipeBody(x, y, w, h, flip) {
