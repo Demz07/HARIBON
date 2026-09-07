@@ -575,19 +575,17 @@ function loop(now) {
 
 function press(e) {
   if (e) e.preventDefault();
-  if (S.mode === 'menu') startGame();
-  else if (S.mode === 'play') flap();
+  if (S.mode === 'play') flap();
   else if (S.mode === 'over' && performance.now() - S.overAt > 600) startGame();
 }
 canvas.addEventListener('pointerdown', press);
 document.addEventListener('keydown', (e) => {
   if (e.code === 'Space' || e.code === 'ArrowUp') {
     e.preventDefault();
-    if (S.mode === 'menu') startGame();
-    else if (S.mode === 'play') flap();
+    if (S.mode === 'play') flap();
     else if (S.mode === 'over' && performance.now() - S.overAt > 600) startGame();
   }
-  if (e.code === 'Enter' && S.mode !== 'play' && (S.mode !== 'over' || performance.now() - S.overAt > 600)) startGame();
+  if (e.code === 'Enter' && S.mode === 'over' && performance.now() - S.overAt > 600) startGame();
 });
 const BTN_UP = 'Assets/button%20up.png', BTN_DOWN = 'Assets/button%20down.png';
 startBtn.addEventListener('dragstart', (e) => e.preventDefault());
