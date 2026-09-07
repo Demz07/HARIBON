@@ -179,7 +179,9 @@ const srcs = {
   down: 'Assets/down.png',
   dead: 'Assets/death.png',
   pipe: 'Assets/pipe.png',
-  bg: 'Assets/Background.png',
+  bgFar: 'Assets/far_background.png',
+  bgMid: 'Assets/middle_background.png',
+  bgNear: 'Assets/closest_background.png',
   n0: 'Assets/numbers_0.png',
   n1: 'Assets/numbers_1.png',
   n2: 'Assets/numbers_2.png',
@@ -459,15 +461,25 @@ function update(dt) {
   }
 }
 
+function drawLayer(layer, factor) {
+  if (!layer) return;
+  const nw = layer.naturalWidth || layer.width || 1;
+  const nh = layer.naturalHeight || layer.height || 1;
+  const scale = Math.max(W / nw, H / nh);
+  const sw = Math.max(1, Math.round(nw * scale));
+  const sh = Math.max(1, Math.round(nh * scale));
+  const dist = S.bgx * factor;
+  const off = ((dist % sw) + sw) % sw;
+  for (let x = -off; x < W; x += sw) ctx.drawImage(layer, x, H - sh, sw, sh);
+}
+
 function drawBackground() {
-  const bg = img.bg;
-  if (!bg) { ctx.fillStyle = '#79c4f2'; ctx.fillRect(0, 0, W, H); return; }
+  ctx.fillStyle = '#79c4f2';
+  ctx.fillRect(0, 0, W, H);
   if (S.bgx > 1000000) S.bgx = S.bgx % 10000;
-  const scale = Math.max(W / bg.width, H / bg.height);
-  const sw = Math.max(1, Math.round(bg.width * scale));
-  const sh = Math.max(1, Math.round(bg.height * scale));
-  const off = ((S.bgx % sw) + sw) % sw;
-  for (let x = -off; x < W; x += sw) ctx.drawImage(bg, x, (H - sh) / 2, sw, sh);
+  drawLayer(img.bgFar, 0.15);
+  drawLayer(img.bgMid, 0.35);
+  drawLayer(img.bgNear, 0.6);
 }
 
 function drawPipeBody(x, y, w, h, flip) {
@@ -624,12 +636,17 @@ document.addEventListener('contextmenu', (e) => { if (e.target === canvas) e.pre
   }
   resizeCanvas();
   try {
-    const [up, mid, down, dead, pipe, bg, ...nums] = await Promise.all([
-      load(srcs.up), load(srcs.mid), load(srcs.down), load(srcs.dead), load(srcs.pipe), load(srcs.bg),
+    const [up, mid, down, dead, pipe, ...nums] = await Promise.all([
+      load(srcs.up), load(srcs.mid), load(srcs.down), load(srcs.dead), load(srcs.pipe),
       load(srcs.n0), load(srcs.n1), load(srcs.n2), load(srcs.n3), load(srcs.n4),
       load(srcs.n5), load(srcs.n6), load(srcs.n7), load(srcs.n8), load(srcs.n9)
     ]);
-    img = { up, mid, down, dead, pipe, bg };
+    const [bgFar, bgMid, bgNear] = await Promise.all([
+      load(srcs.bgFar).catch(() => null),
+      load(srcs.bgMid).catch(() => null),
+      load(srcs.bgNear).catch(() => null)
+    ]);
+    img = { up, mid, down, dead, pipe, bgFar, bgMid, bgNear };
     nums.forEach((im, i) => { numImgs[String(i)] = im; });
     const dw = dead.naturalWidth || dead.width || 1;
     const dh = dead.naturalHeight || dead.height || 1;
