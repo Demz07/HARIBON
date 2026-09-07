@@ -570,7 +570,9 @@ function loop(now) {
 
 function press(e) {
   if (e) e.preventDefault();
-  if (S.mode === 'play') flap();
+  if (S.mode === 'menu') startGame();
+  else if (S.mode === 'play') flap();
+  else if (S.mode === 'over' && performance.now() - S.overAt > 600) startGame();
 }
 canvas.addEventListener('pointerdown', press);
 document.addEventListener('keydown', (e) => {
@@ -596,6 +598,10 @@ document.addEventListener('dblclick', (e) => e.preventDefault(), { passive: fals
 document.addEventListener('contextmenu', (e) => { if (e.target === canvas) e.preventDefault(); });
 
 (async function init() {
+  if ('ontouchstart' in window || (navigator.maxTouchPoints || 0) > 0) {
+    const sp = document.getElementById('spacePrompt');
+    if (sp) sp.textContent = 'TAP ANYWHERE TO TRY AGAIN';
+  }
   resizeCanvas();
   try {
     const [up, mid, down, dead, pipe, bg, ...nums] = await Promise.all([
