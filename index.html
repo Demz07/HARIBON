@@ -13,6 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="any" href="Assets/fav%20icon.png">
 <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-192.png">
+<link rel="preload" as="image" href="Assets/button%20down.png">
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -588,6 +589,7 @@ document.addEventListener('keydown', (e) => {
   if (e.code === 'Enter' && S.mode === 'over' && performance.now() - S.overAt > 600) startGame();
 });
 const BTN_UP = 'Assets/button%20up.png', BTN_DOWN = 'Assets/button%20down.png';
+const btnDownPre = new Image(); btnDownPre.src = BTN_DOWN;
 startBtn.addEventListener('dragstart', (e) => e.preventDefault());
 startBtn.addEventListener('contextmenu', (e) => e.preventDefault());
 startBtn.addEventListener('pointerdown', (e) => {
@@ -598,10 +600,13 @@ startBtn.addEventListener('pointerdown', (e) => {
 const btnReset = () => { startBtn.src = BTN_UP; };
 startBtn.addEventListener('pointercancel', btnReset);
 startBtn.addEventListener('pointerleave', () => { if (S.mode === 'menu') btnReset(); });
+let btnStarting = false;
 startBtn.addEventListener('pointerup', (e) => {
   e.preventDefault();
-  btnReset();
-  startGame();
+  if (S.mode !== 'menu' || btnStarting) return;
+  btnStarting = true;
+  startBtn.src = BTN_DOWN;
+  setTimeout(() => { btnStarting = false; btnReset(); startGame(); }, 140);
 });
 
 window.addEventListener('resize', scheduleResize);
