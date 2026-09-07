@@ -478,8 +478,8 @@ function drawBackground() {
   ctx.fillRect(0, 0, W, H);
   if (S.bgx > 1000000) S.bgx = S.bgx % 10000;
   drawLayer(img.bgFar, 0.15);
-  drawLayer(img.bgMid, 0.35);
-  drawLayer(img.bgNear, 0.6, 0.85);
+  drawLayer(img.bgMid, 0.35, 0.75);
+  drawLayer(img.bgNear, 0.6, 0.75);
 }
 
 function drawPipeBody(x, y, w, h, flip) {
