@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0e1a24">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Haribon">
+<meta name="application-name" content="Haribon">
+<title>Haribon</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="any" href="Assets/fav%20icon.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; height: 100dvh; }
+  body {
+    background: #0e1a24;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Press Start 2P', monospace;
+    overflow: hidden; user-select: none; -webkit-user-select: none;
+    touch-action: none; overscroll-behavior: none;
+    position: fixed; inset: 0; width: 100vw; height: 100vh; height: 100dvh;
+  }
+  #wrap {
+    position: relative;
+    width: 100vw; height: 100vh; height: 100dvh;
+    max-width: none; aspect-ratio: auto; max-height: none;
+    box-shadow: none;
+    border-radius: 0; overflow: hidden;
+    background: #79c4f2;
+  }
+  canvas { width: 100%; height: 100%; display: block; image-rendering: auto; touch-action: none; }
+  #ui { position: absolute; inset: 0; pointer-events: none; }
+  #score {
+    position: absolute; top: max(7%, env(safe-area-inset-top)); width: 100%;
+    display: flex; justify-content: center; align-items: flex-start; gap: 1px;
+    padding: 0 12px; transform-origin: top center;
+  }
+  #score img { height: clamp(104px, 22vh, 168px); width: auto; filter: drop-shadow(6px 6px 0 #222); object-fit: contain; }
+  #score.pop { animation: scorePop .32s ease-out; }
+  @keyframes scorePop { 0% { transform: scale(1); } 35% { transform: scale(1.28); } 100% { transform: scale(1); } }
+  #title {
+    position: absolute; top: 12%; left: 50%; transform: translateX(-50%);
+    width: min(86%, 360px); display: none;
+    pointer-events: none;
+    filter: drop-shadow(0 4px 0 rgba(0,0,0,.35));
+  }
+  #startBtn {
+    position: absolute; left: 50%; top: 58%; transform: translate(-50%, -50%);
+    transform-origin: center;
+    width: min(62%, 300px); min-height: 48px; cursor: pointer; pointer-events: auto;
+    filter: drop-shadow(0 6px 0 rgba(0,0,0,.35));
+    transition: transform .06s;
+    touch-action: manipulation;
+    animation: btnPulse 2.4s infinite ease-in-out;
+  }
+  #startBtn:active { transform: translate(-50%, -46%) scale(1.08); animation-play-state: paused; }
+  @keyframes btnPulse {
+    0%, 100% { transform: translate(-50%, -50%) scale(1); filter: drop-shadow(0 6px 0 rgba(0,0,0,.35)) brightness(1); }
+    50% { transform: translate(-50%, -50%) scale(1.08); filter: drop-shadow(0 8px 0 rgba(0,0,0,.35)) brightness(1.12); }
+  }
+  @media (prefers-reduced-motion: reduce) { #startBtn { animation: none; } }
+  #over {
+    position: absolute; inset: 0; display: none;
+    flex-direction: column; align-items: center; justify-content: center;
+    padding-top: 0; padding-bottom: 6%;
+    padding-left: max(12px, env(safe-area-inset-left));
+    padding-right: max(12px, env(safe-area-inset-right));
+    pointer-events: none; text-align: center; line-height: 2;
+  }
+  #overImg { width: min(94%, 380px); display: block; margin-bottom: 10px; transform-origin: center; animation: overPulse 1s infinite ease-in-out; }
+  @keyframes overPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.07); } }
+  @media (prefers-reduced-motion: reduce) { #overImg { animation: none; } }
+  #over p { font-size: clamp(9px, 2.8vw, 12px); color: #fff; text-shadow: 2px 2px 0 #222; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .spriteNum { display: inline-flex; align-items: center; gap: 1px; }
+  .spriteNum img { height: 92px; width: auto; filter: drop-shadow(5px 5px 0 #222); object-fit: contain; }
+  #spacePrompt {
+    margin-top: 14px; font-size: clamp(8px, 2.6vw, 11px); color: #fff799;
+    text-shadow: 2px 2px 0 #5b3a1e;
+    animation: blink 0.8s infinite alternate ease-in-out;
+  }
+  @keyframes blink { from { opacity: .45; } to { opacity: 1; } }
+  #hint {
+    position: absolute; bottom: max(16%, env(safe-area-inset-bottom)); width: 100%; text-align: center;
+    font-size: clamp(8px, 2.6vw, 11px); color: #fff; text-shadow: 2px 2px 0 #222;
+    display: none; animation: bob 1s infinite alternate ease-in-out;
+    padding: 0 16px;
+  }
+  @keyframes bob { from { opacity: .6; } to { opacity: 1; } }
+  @media (orientation: landscape) and (max-height: 500px) {
+    #title { top: 5%; width: min(40%, 300px); }
+    #startBtn { top: 60%; width: min(30%, 220px); }
+    #score { top: max(4%, env(safe-area-inset-top)); }
+    #over { padding-top: 8%; }
+    #hint { bottom: max(6%, env(safe-area-inset-bottom)); }
+  }
+  @media (min-width: 1024px) and (pointer: fine) {
+    body { background: beige; position: static; width: auto; height: 100%; height: 100dvh; }
+    #wrap {
+      width: min(100vw, calc(100vh * 0.625));
+      max-width: 480px;
+      aspect-ratio: 400 / 640;
+      max-height: 100vh; max-height: 100dvh;
+      box-shadow: 0 0 60px rgba(0,0,0,.6);
+      border-radius: 6px;
+    }
+    #score img { height: 152px; }
+  }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="game" width="400" height="640"></canvas>
+  <div id="ui">
+    <div id="score"></div>
+    <img id="title" src="Assets/title.png" alt="HARIBON">
+    <img id="startBtn" src="Assets/button%20up.png" alt="Start">
+    <div id="hint">TAP / CLICK / SPACE TO FLAP</div>
+    <div id="over">
+      <img id="overImg" src="Assets/game%20over.png" alt="GAME OVER">
+      <p>SCORE <span id="final" class="spriteNum"></span></p>
+      <p>BEST <span id="best" class="spriteNum"></span></p>
+      <p id="spacePrompt">PRESS SPACE TO TRY AGAIN</p>
+    </div>
+  </div>
+</div>
+<script>
+const BASE_W = 400, BASE_H = 640, FLOOR_H = 0;
+let W = 400, H = 640;
+const canvas = document.getElementById('game');
+const wrap = document.getElementById('wrap');
+const ctx = canvas.getContext('2d');
+const scoreEl = document.getElementById('score');
+const startBtn = document.getElementById('startBtn');
+const overBox = document.getElementById('over');
+const finalEl = document.getElementById('final');
+const bestEl = document.getElementById('best');
+const titleEl = document.getElementById('title');
+const hintEl = document.getElementById('hint');
+
+function load(src) {
+  return new Promise((res, rej) => {
+    const i = new Image();
+    i.onload = () => res(i);
+    i.onerror = rej;
+    i.src = src;
+  });
+}
+
+const srcs = {
+  up: 'Assets/up.png',
+  mid: 'Assets/Mid.png',
+  down: 'Assets/down.png',
+  dead: 'Assets/death.png',
+  pipe: 'Assets/pipe.png',
+  bg: 'Assets/Background.png',
+  n0: 'Assets/numbers_0.png',
+  n1: 'Assets/numbers_1.png',
+  n2: 'Assets/numbers_2.png',
+  n3: 'Assets/numbers_3.png',
+  n4: 'Assets/numbers_4.png',
+  n5: 'Assets/numbers_5.png',
+  n6: 'Assets/numbers_6.png',
+  n7: 'Assets/numbers_7.png',
+  n8: 'Assets/numbers_8.png',
+  n9: 'Assets/numbers_9.png'
+};
+let numImgs = {};
+
+let img = {};
+let pipeTrim = null;
+let bgPattern = 0;
+
+function trimPipe(image) {
+  const c = document.createElement('canvas');
+  c.width = image.naturalWidth || image.width;
+  c.height = image.naturalHeight || image.height;
+  const g = c.getContext('2d', { willReadFrequently: true });
+  g.drawImage(image, 0, 0);
+  let data;
+  try { data = g.getImageData(0, 0, c.width, c.height).data; }
+  catch (e) { return { img: image, x: 0, y: 0, w: c.width, h: c.height }; }
+  const dark = (i) => data[i] < 16 && data[i + 1] < 16 && data[i + 2] < 16;
+  const clear = (i) => data[i + 3] < 12 || dark(i);
+  let l = 0, r = c.width - 1, t = 0, b = c.height - 1;
+  const colClear = (x) => { for (let y = 0; y < c.height; y++) if (!clear((y * c.width + x) * 4)) return false; return true; };
+  const rowClear = (y) => { for (let x = 0; x < c.width; x++) if (!clear((y * c.width + x) * 4)) return false; return true; };
+  while (l < r && colClear(l)) l++;
+  while (r > l && colClear(r)) r--;
+  while (t < b && rowClear(t)) t++;
+  while (b > t && rowClear(b)) b--;
+  const pad = 2;
+  l = Math.max(0, l - pad); t = Math.max(0, t - pad);
+  r = Math.min(c.width - 1, r + pad); b = Math.min(c.height - 1, b + pad);
+  const rowWidth = (y) => {
+    let a = l, z = r;
+    while (a <= z && clear((y * c.width + a) * 4)) a++;
+    while (z >= a && clear((y * c.width + z) * 4)) z--;
+    return z - a + 1;
+  };
+  const midY = Math.floor((t + b) / 2);
+  const bodyW = Math.min(rowWidth(midY - 4), rowWidth(midY), rowWidth(midY + 4));
+  let capBottom = t;
+  for (let y = t; y < b - 6; y++) {
+    let narrow = 0;
+    for (let k = 0; k < 6; k++) if (rowWidth(y + k) <= bodyW + 6) narrow++;
+    if (narrow === 6) { capBottom = y; break; }
+  }
+  const body = { img: image, x: l, y: capBottom, w: r - l + 1, h: b - capBottom + 1 };
+  const cap = { img: image, x: l, y: t, w: r - l + 1, h: Math.max(1, capBottom - t) };
+  body.cap = cap;
+  return body;
+}
+
+let AC = null;
+function beep(freq, dur, type, vol, when) {
+  try {
+    AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.type = type || 'square'; o.frequency.value = freq;
+    const t = AC.currentTime + (when || 0);
+    g.gain.setValueAtTime(vol || 0.06, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.connect(g); g.connect(AC.destination);
+    o.start(t); o.stop(t + dur);
+  } catch (e) {}
+}
+const sfx = {
+  flap() { beep(520, 0.09, 'square', 0.05); beep(780, 0.07, 'square', 0.04, 0.05); },
+  score() { beep(880, 0.08, 'square', 0.06); beep(1320, 0.12, 'square', 0.06, 0.08); },
+  hit() { beep(160, 0.25, 'sawtooth', 0.08); }
+};
+
+const S = {
+  mode: 'menu',
+  bird: { y: H * 0.45, v: 0, r: 0, frame: 0, ft: 0 },
+  pipes: [],
+  spawnT: 0,
+  speed: 165,
+  score: 0,
+  best: +(localStorage.getItem('flappyPhilBest') || 0),
+  bgx: 0,
+  groundX: 0,
+  bob: 0,
+  dead: 0,
+  shake: 0,
+  overAt: 0
+};
+let BIRD_X = Math.round(W * 0.28), BIRD_R = 20, BIRD_W = 80, BIRD_H = 80;
+const GRAV = 1650, FLAP = -470, MAXFALL = 640;
+let PIPE_W = 130, GAP = 178, SPACING = 300;
+let deathFrames = 1;
+
+function layout() {
+  const cw = wrap.clientWidth || window.innerWidth;
+  const ch = wrap.clientHeight || window.innerHeight;
+  const aspect = cw / Math.max(1, ch);
+  H = BASE_H;
+  W = Math.round(Math.max(BASE_W, Math.min(900, BASE_H * aspect)));
+  BIRD_X = Math.round(W * 0.28);
+  const s = Math.max(0.85, Math.min(1.25, W / BASE_W));
+  PIPE_W = Math.round(130 * s);
+  GAP = Math.round(178 * Math.max(0.92, Math.min(1.1, W / BASE_W)));
+  SPACING = Math.round(300 * s);
+}
+
+function resizeCanvas() {
+  layout();
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const cw = wrap.clientWidth || window.innerWidth;
+  const ch = wrap.clientHeight || window.innerHeight;
+  canvas.width = Math.round(cw * dpr);
+  canvas.height = Math.round(ch * dpr);
+  const scale = canvas.height / H;
+  ctx.setTransform(scale, 0, 0, scale, (canvas.width - W * scale) / 2, 0);
+}
+let resizeT = 0;
+function scheduleResize() {
+  clearTimeout(resizeT);
+  resizeT = setTimeout(resizeCanvas, 80);
+}
+
+function renderNum(el, value) {
+  el.innerHTML = '';
+  const digits = String(value).split('');
+  if (!numImgs[digits[0]]) { el.textContent = value; return; }
+  for (const d of digits) {
+    const im = document.createElement('img');
+    im.src = numImgs[d].src;
+    im.alt = d;
+    el.appendChild(im);
+  }
+}
+function setScore(pop) {
+  renderNum(scoreEl, S.score);
+  if (pop) {
+    scoreEl.classList.remove('pop');
+    void scoreEl.offsetWidth;
+    scoreEl.classList.add('pop');
+  }
+}
+
+function reset(world) {
+  S.bird.y = H * 0.45; S.bird.v = 0; S.bird.r = 0; S.bird.frame = 1;
+  S.pipes = []; S.spawnT = 0.9; S.speed = 165; S.score = 0; S.dead = 0;
+  setScore(false);
+  if (world) { S.bgx = 0; S.groundX = 0; S.bob = 0; }
+}
+
+function flap() {
+  if (S.mode !== 'play') return;
+  S.bird.v = FLAP;
+  sfx.flap();
+}
+
+function startGame() {
+  reset(false);
+  S.mode = 'play';
+  startBtn.style.display = 'none';
+  titleEl.style.display = 'none';
+  hintEl.style.display = 'none';
+  overBox.style.display = 'none';
+}
+
+function endGame() {
+  if (S.mode === 'over') return;
+  S.mode = 'over';
+  S.dead = 0;
+  S.shake = 16;
+  S.overAt = performance.now();
+  sfx.hit();
+  S.best = Math.max(S.best, S.score);
+  localStorage.setItem('flappyPhilBest', S.best);
+  renderNum(finalEl, S.score);
+  renderNum(bestEl, S.best);
+  setTimeout(() => { if (S.mode === 'over') overBox.style.display = 'flex'; }, 450);
+}
+
+function spawnPipe() {
+  const margin = 90;
+  const minY = margin + GAP / 2, maxY = H - FLOOR_H - margin - GAP / 2;
+  const gapY = minY + Math.random() * (maxY - minY);
+  S.pipes.push({ x: W + 20, gapY, scored: false });
+}
+
+function update(dt) {
+  const b = S.bird;
+  if (S.mode === 'menu') {
+    S.bob += dt;
+    S.bgx += 24 * dt;
+    S.groundX = (S.groundX + 70 * dt) % 48;
+    b.y = H * 0.45 + Math.sin(S.bob * 3.2) * 10;
+    b.ft += dt;
+    if (b.ft > 0.22) { b.ft = 0; b.frame = (b.frame + 1) % 3; }
+    b.r = Math.sin(S.bob * 3.2 + 0.6) * 0.08;
+    return;
+  }
+  if (S.mode === 'play') {
+    S.bgx += S.speed * 0.35 * dt;
+    S.groundX = (S.groundX + S.speed * dt) % 48;
+    b.v = Math.min(MAXFALL, b.v + GRAV * dt);
+    b.y += b.v * dt;
+    const target = b.v < 0 ? -0.32 : Math.min(1.25, b.v / 520);
+    b.r += (target - b.r) * Math.min(1, dt * 9);
+    b.ft += dt;
+    if (b.ft > 0.11) { b.ft = 0; b.frame = (b.frame + 1) % 3; }
+    S.speed = Math.min(250, 165 + S.score * 4);
+    S.spawnT -= dt;
+    if (S.spawnT <= 0) { spawnPipe(); S.spawnT = SPACING / S.speed; }
+    for (const p of S.pipes) p.x -= S.speed * dt;
+    if (S.pipes.length && S.pipes[0].x < -PIPE_W - 10) S.pipes.shift();
+    for (const p of S.pipes) {
+      if (!p.scored && p.x + PIPE_W < BIRD_X - BIRD_R) {
+        p.scored = true; S.score++;
+        setScore(true);
+        sfx.score();
+      }
+    }
+    const top = BIRD_R - 4;
+    if (b.y - BIRD_R < -40 || b.y + BIRD_R > H + 6) return endGame();
+    for (const p of S.pipes) {
+      const gapTop = p.gapY - GAP / 2, gapBot = p.gapY + GAP / 2;
+      if (BIRD_X + BIRD_R - 6 > p.x + 12 && BIRD_X - BIRD_R + 6 < p.x + PIPE_W - 12) {
+        if (b.y - BIRD_R + 8 < gapTop || b.y + BIRD_R - 8 > gapBot) return endGame();
+      }
+    }
+    return;
+  }
+  if (S.mode === 'over') {
+    S.dead += dt;
+    if (S.dead < 0.5 && b.y + BIRD_R < H) {
+      b.v = Math.min(MAXFALL, b.v + GRAV * dt);
+      b.y += b.v * dt;
+      b.r = Math.min(1.4, b.r + dt * 4);
+    }
+  }
+}
+
+function drawBackground() {
+  const bg = img.bg;
+  if (!bg) { ctx.fillStyle = '#79c4f2'; ctx.fillRect(0, 0, W, H); return; }
+  if (S.bgx > 1000000) S.bgx = S.bgx % 10000;
+  const scale = Math.max(W / bg.width, H / bg.height);
+  const sw = Math.max(1, Math.round(bg.width * scale));
+  const sh = Math.max(1, Math.round(bg.height * scale));
+  const off = ((S.bgx % sw) + sw) % sw;
+  for (let x = -off; x < W; x += sw) ctx.drawImage(bg, x, (H - sh) / 2, sw, sh);
+}
+
+function drawPipeBody(x, y, w, h, flip) {
+  const t = pipeTrim;
+  if ((!t && !img.pipe) || h <= 0) return;
+  let sx, sy, sw, sh, src;
+  if (t && t.cap) {
+    sx = t.x; sy = t.cap.y; sw = t.w; sh = t.cap.h + t.h; src = t.img;
+  } else if (t) {
+    sx = t.x; sy = t.y; sw = t.w; sh = t.h; src = t.img;
+  } else {
+    sx = 0; sy = 0; sw = img.pipe.width; sh = img.pipe.height; src = img.pipe;
+  }
+  if (flip) {
+    ctx.save();
+    ctx.translate(0, y + h); ctx.scale(1, -1);
+    ctx.drawImage(src, sx, sy, sw, sh, x, 0, w, h);
+    ctx.restore();
+  } else {
+    ctx.drawImage(src, sx, sy, sw, sh, x, y, w, h);
+  }
+}
+
+function drawPipes() {
+  for (const p of S.pipes) {
+    const gapTop = p.gapY - GAP / 2, gapBot = p.gapY + GAP / 2;
+    drawPipeBody(p.x, -60, PIPE_W, gapTop + 60, true);
+    drawPipeBody(p.x, gapBot, PIPE_W, H - gapBot + 60, false);
+  }
+}
+
+const birdFrames = () => [img.up, img.mid, img.down][S.bird.frame] || img.mid;
+
+function drawBird() {
+  const b = S.bird;
+  const dead = S.mode === 'over' && img.dead;
+  const frame = dead || birdFrames();
+  if (!frame) return;
+  const nw = frame.naturalWidth || frame.width || 1;
+  const nh = frame.naturalHeight || frame.height || 1;
+  ctx.save();
+  ctx.translate(BIRD_X, b.y);
+  ctx.rotate(b.r);
+  if (dead && deathFrames > 1) {
+    const fw = nw / deathFrames;
+    const aspect = fw / nh;
+    let dw = BIRD_W, dh = dw / aspect;
+    if (dh > BIRD_H) { dh = BIRD_H; dw = dh * aspect; }
+    const fi = Math.floor(S.dead * 10) % deathFrames;
+    ctx.drawImage(frame, fi * fw, 0, fw, nh, -dw / 2, -dh / 2, dw, dh);
+  } else {
+    const aspect = nw / nh;
+    let dw = BIRD_W, dh = dw / aspect;
+    if (dh > BIRD_H) { dh = BIRD_H; dw = dh * aspect; }
+    ctx.drawImage(frame, -dw / 2, -dh / 2, dw, dh);
+  }
+  ctx.restore();
+}
+
+function drawFloor() {
+  const fy = H - FLOOR_H;
+  ctx.fillStyle = '#ded895';
+  ctx.fillRect(0, fy, W, FLOOR_H);
+  ctx.fillStyle = '#d3c98f';
+  const off = S.groundX % 48;
+  for (let x = -48 - off; x < W + 48; x += 48) ctx.fillRect(x, fy + 30, 24, FLOOR_H - 30);
+  ctx.fillStyle = '#9be85a';
+  ctx.fillRect(0, fy, W, 24);
+  ctx.fillStyle = '#c8ff8a';
+  ctx.fillRect(0, fy, W, 6);
+  ctx.fillStyle = '#222';
+  ctx.fillRect(0, fy, W, 3);
+  ctx.fillRect(0, fy + 24, W, 3);
+}
+
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+  ctx.save();
+  if (S.shake > 0.3) ctx.translate((Math.random() - 0.5) * S.shake, (Math.random() - 0.5) * S.shake);
+  drawBackground();
+  drawPipes();
+  drawBird();
+  ctx.restore();
+}
+
+let last = performance.now();
+function loop(now) {
+  let dt = (now - last) / 1000;
+  last = now;
+  if (dt > 0.033) dt = 0.033;
+  if (S.shake > 0) { S.shake *= Math.pow(0.002, dt); if (S.shake < 0.3) S.shake = 0; }
+  update(dt);
+  draw();
+  requestAnimationFrame(loop);
+}
+
+function press(e) {
+  if (e) e.preventDefault();
+  if (S.mode === 'play') flap();
+}
+canvas.addEventListener('pointerdown', press);
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'Space' || e.code === 'ArrowUp') {
+    e.preventDefault();
+    if (S.mode === 'menu') startGame();
+    else if (S.mode === 'play') flap();
+    else if (S.mode === 'over' && performance.now() - S.overAt > 600) startGame();
+  }
+  if (e.code === 'Enter' && S.mode !== 'play' && (S.mode !== 'over' || performance.now() - S.overAt > 600)) startGame();
+});
+startBtn.addEventListener('pointerdown', () => { startBtn.src = 'Assets/button%20down.png'; });
+startBtn.addEventListener('pointerup', (e) => {
+  e.preventDefault();
+  startBtn.src = 'Assets/button%20up.png';
+  startGame();
+});
+
+window.addEventListener('resize', scheduleResize);
+if (window.visualViewport) window.visualViewport.addEventListener('resize', scheduleResize);
+window.addEventListener('orientationchange', scheduleResize);
+document.addEventListener('dblclick', (e) => e.preventDefault(), { passive: false });
+document.addEventListener('contextmenu', (e) => { if (e.target === canvas) e.preventDefault(); });
+
+(async function init() {
+  resizeCanvas();
+  try {
+    const [up, mid, down, dead, pipe, bg, ...nums] = await Promise.all([
+      load(srcs.up), load(srcs.mid), load(srcs.down), load(srcs.dead), load(srcs.pipe), load(srcs.bg),
+      load(srcs.n0), load(srcs.n1), load(srcs.n2), load(srcs.n3), load(srcs.n4),
+      load(srcs.n5), load(srcs.n6), load(srcs.n7), load(srcs.n8), load(srcs.n9)
+    ]);
+    img = { up, mid, down, dead, pipe, bg };
+    nums.forEach((im, i) => { numImgs[String(i)] = im; });
+    const dw = dead.naturalWidth || dead.width || 1;
+    const dh = dead.naturalHeight || dead.height || 1;
+    if (dw > dh * 1.3) deathFrames = Math.max(1, Math.round(dw / dh));
+    pipeTrim = trimPipe(pipe);
+  } catch (e) {
+    scoreEl.textContent = 'ASSETS MISSING';
+    return;
+  }
+  resizeCanvas();
+  reset(true);
+  S.mode = 'menu';
+  titleEl.style.display = 'block';
+  hintEl.style.display = 'block';
+  requestAnimationFrame((t) => { last = t; requestAnimationFrame(loop); });
+})();
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+}
+</script>
+</body>
+</html>
