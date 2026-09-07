@@ -470,7 +470,7 @@ function drawLayer(layer, factor, fitTop) {
     const scale = W / nw;
     sw = Math.max(1, Math.round(nw * scale));
     sh = Math.max(1, Math.round(nh * scale));
-    y = 0;
+    y = Math.round((H - sh) / 2);
   } else {
     const scale = Math.max(W / nw, H / nh);
     sw = Math.max(1, Math.round(nw * scale));
