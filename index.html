@@ -43,6 +43,20 @@
   #score img { height: clamp(104px, 22vh, 168px); width: auto; filter: drop-shadow(6px 6px 0 #222); object-fit: contain; }
   #score.pop { animation: scorePop .32s ease-out; }
   @keyframes scorePop { 0% { transform: scale(1); } 35% { transform: scale(1.28); } 100% { transform: scale(1); } }
+  #warn {
+    position: absolute; top: 36%; width: 100%; text-align: center;
+    font-size: clamp(14px, 4.5vw, 24px); color: #fff799;
+    text-shadow: 3px 3px 0 #5b3a1e, -1px -1px 0 #222;
+    opacity: 0; pointer-events: none; padding: 0 12px;
+  }
+  #warn.show { animation: warnFlash 2.2s ease-out; }
+  @keyframes warnFlash {
+    0% { opacity: 0; transform: scale(.6); }
+    15% { opacity: 1; transform: scale(1.12); }
+    30% { opacity: 1; transform: scale(1); }
+    75% { opacity: 1; }
+    100% { opacity: 0; transform: scale(1); }
+  }
   #title {
     position: absolute; top: 12%; left: 50%; transform: translateX(-50%);
     width: min(86%, 360px); display: none;
@@ -117,6 +131,7 @@
   <canvas id="game" width="400" height="640"></canvas>
   <div id="ui">
     <div id="score"></div>
+    <div id="warn"></div>
     <img id="title" src="Assets/title.png" alt="HARIBON">
     <img id="startBtn" src="Assets/button%20up.png" alt="Start">
     <div id="hint">TAP / CLICK / SPACE TO FLAP</div>
@@ -135,6 +150,7 @@ const canvas = document.getElementById('game');
 const wrap = document.getElementById('wrap');
 const ctx = canvas.getContext('2d');
 const scoreEl = document.getElementById('score');
+const warnEl = document.getElementById('warn');
 const startBtn = document.getElementById('startBtn');
 const overBox = document.getElementById('over');
 const finalEl = document.getElementById('final');
@@ -248,8 +264,21 @@ const S = {
   bob: 0,
   dead: 0,
   shake: 0,
-  overAt: 0
+  overAt: 0,
+  time: 0,
+  swayWarned: false,
+  slantWarned: false
 };
+const SWAY_SCORE = 40, SLANT_SCORE = 100;
+const SWAY_FREQ = 2.1, SLANT_FREQ = 1.7;
+const swayAmp = () => S.score < SWAY_SCORE ? 0 : Math.min(48, 14 + (S.score - SWAY_SCORE) * 2);
+const slantMax = () => S.score < SLANT_SCORE ? 0 : Math.min(0.14, 0.06 + (S.score - SLANT_SCORE) * 0.004);
+function flashWarn(t) {
+  warnEl.textContent = t;
+  warnEl.classList.remove('show');
+  void warnEl.offsetWidth;
+  warnEl.classList.add('show');
+}
 let BIRD_X = Math.round(W * 0.28), BIRD_R = 20, BIRD_W = 80, BIRD_H = 80;
 const GRAV = 1650, FLAP = -470, MAXFALL = 640;
 let PIPE_W = 130, GAP = 178, SPACING = 300;
@@ -307,6 +336,7 @@ function setScore(pop) {
 function reset(world) {
   S.bird.y = H * 0.45; S.bird.v = 0; S.bird.r = 0; S.bird.frame = 1;
   S.pipes = []; S.spawnT = 0.9; S.speed = 165; S.score = 0; S.dead = 0;
+  S.time = 0; S.swayWarned = false; S.slantWarned = false;
   setScore(false);
   if (world) { S.bgx = 0; S.groundX = 0; S.bob = 0; }
 }
@@ -344,7 +374,12 @@ function spawnPipe() {
   const margin = 90;
   const minY = margin + GAP / 2, maxY = H - FLOOR_H - margin - GAP / 2;
   const gapY = minY + Math.random() * (maxY - minY);
-  S.pipes.push({ x: W + 20, gapY, scored: false });
+  S.pipes.push({
+    x: W + 20, gapY, baseGapY: gapY, scored: false, slant: 0,
+    phase: Math.random() * Math.PI * 2,
+    slantPhase: Math.random() * Math.PI * 2,
+    slantDir: Math.random() < 0.5 ? -1 : 1
+  });
 }
 
 function update(dt) {
@@ -360,6 +395,7 @@ function update(dt) {
     return;
   }
   if (S.mode === 'play') {
+    S.time += dt;
     S.bgx += S.speed * 0.35 * dt;
     S.groundX = (S.groundX + S.speed * dt) % 48;
     b.v = Math.min(MAXFALL, b.v + GRAV * dt);
@@ -371,20 +407,35 @@ function update(dt) {
     S.speed = Math.min(250, 165 + S.score * 4);
     S.spawnT -= dt;
     if (S.spawnT <= 0) { spawnPipe(); S.spawnT = SPACING / S.speed; }
-    for (const p of S.pipes) p.x -= S.speed * dt;
+    const amp = swayAmp(), smax = slantMax();
+    const margin = 90;
+    const minY = margin + GAP / 2, maxY = H - FLOOR_H - margin - GAP / 2;
+    for (const p of S.pipes) {
+      p.x -= S.speed * dt;
+      if (amp > 0) p.gapY = Math.max(minY, Math.min(maxY, p.baseGapY + Math.sin(S.time * SWAY_FREQ + p.phase) * amp));
+      p.slant = smax > 0 ? (p.slantDir * 0.5 + Math.sin(S.time * SLANT_FREQ + p.slantPhase) * 0.5) * smax : 0;
+    }
     if (S.pipes.length && S.pipes[0].x < -PIPE_W - 10) S.pipes.shift();
     for (const p of S.pipes) {
       if (!p.scored && p.x + PIPE_W < BIRD_X - BIRD_R) {
         p.scored = true; S.score++;
         setScore(true);
         sfx.score();
+        if (S.score === SWAY_SCORE && !S.swayWarned) { S.swayWarned = true; flashWarn('WINDY PIPES!'); }
+        if (S.score === SLANT_SCORE && !S.slantWarned) { S.slantWarned = true; flashWarn('SLANT STORM!'); }
       }
     }
     const top = BIRD_R - 4;
     if (b.y - BIRD_R < -40 || b.y + BIRD_R > H + 6) return endGame();
     for (const p of S.pipes) {
       const gapTop = p.gapY - GAP / 2, gapBot = p.gapY + GAP / 2;
-      if (BIRD_X + BIRD_R - 6 > p.x + 12 && BIRD_X - BIRD_R + 6 < p.x + PIPE_W - 12) {
+      let shift = 0;
+      if (p.slant) {
+        const s = Math.sin(p.slant);
+        if (b.y < gapTop) shift = (gapTop - b.y) * s;
+        else if (b.y > gapBot) shift = -(b.y - gapBot) * s;
+      }
+      if (BIRD_X + BIRD_R - 6 > p.x + 12 + shift && BIRD_X - BIRD_R + 6 < p.x + PIPE_W - 12 + shift) {
         if (b.y - BIRD_R + 8 < gapTop || b.y + BIRD_R - 8 > gapBot) return endGame();
       }
     }
@@ -435,8 +486,20 @@ function drawPipeBody(x, y, w, h, flip) {
 function drawPipes() {
   for (const p of S.pipes) {
     const gapTop = p.gapY - GAP / 2, gapBot = p.gapY + GAP / 2;
-    drawPipeBody(p.x, -60, PIPE_W, gapTop + 60, true);
-    drawPipeBody(p.x, gapBot, PIPE_W, H - gapBot + 60, false);
+    if (p.slant) {
+      const cx = p.x + PIPE_W / 2;
+      ctx.save();
+      ctx.translate(cx, gapTop); ctx.rotate(p.slant);
+      drawPipeBody(p.x - cx, -60 - gapTop, PIPE_W, gapTop + 60, true);
+      ctx.restore();
+      ctx.save();
+      ctx.translate(cx, gapBot); ctx.rotate(p.slant);
+      drawPipeBody(p.x - cx, gapBot - gapBot, PIPE_W, H - gapBot + 60, false);
+      ctx.restore();
+    } else {
+      drawPipeBody(p.x, -60, PIPE_W, gapTop + 60, true);
+      drawPipeBody(p.x, gapBot, PIPE_W, H - gapBot + 60, false);
+    }
   }
 }
 
