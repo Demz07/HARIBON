@@ -344,6 +344,7 @@ function reset(world) {
   S.pipes = []; S.spawnT = 0.9; S.speed = 165; S.score = 0; S.dead = 0;
   S.time = 0; S.swayWarned = false; S.slantWarned = false;
   setScore(false);
+  scoreEl.style.display = 'none';
   if (world) { S.bgx = 0; S.groundX = 0; S.bob = 0; }
 }
 
@@ -355,6 +356,7 @@ function flap() {
 
 function startGame() {
   reset(false);
+  scoreEl.style.display = 'flex';
   S.mode = 'play';
   startBtn.style.display = 'none';
   titleEl.style.display = 'none';
