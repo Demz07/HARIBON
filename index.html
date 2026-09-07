@@ -461,34 +461,25 @@ function update(dt) {
   }
 }
 
-function drawLayer(layer, factor, fitTop) {
+function drawLayer(layer, factor) {
   if (!layer) return;
   const nw = layer.naturalWidth || layer.width || 1;
   const nh = layer.naturalHeight || layer.height || 1;
-  let sw, sh, y;
-  if (fitTop) {
-    const scale = W / nw;
-    sw = Math.max(1, Math.round(nw * scale));
-    sh = Math.max(1, Math.round(nh * scale));
-    y = Math.round((H - sh) / 2);
-  } else {
-    const scale = Math.max(W / nw, H / nh);
-    sw = Math.max(1, Math.round(nw * scale));
-    sh = Math.max(1, Math.round(nh * scale));
-    y = H - sh;
-  }
+  const scale = Math.max(W / nw, H / nh);
+  const sw = Math.max(1, Math.round(nw * scale));
+  const sh = Math.max(1, Math.round(nh * scale));
   const dist = S.bgx * factor;
   const off = ((dist % sw) + sw) % sw;
-  for (let x = -off; x < W; x += sw) ctx.drawImage(layer, x, y, sw, sh);
+  for (let x = -off; x < W; x += sw) ctx.drawImage(layer, x, H - sh, sw, sh);
 }
 
 function drawBackground() {
   ctx.fillStyle = '#79c4f2';
   ctx.fillRect(0, 0, W, H);
   if (S.bgx > 1000000) S.bgx = S.bgx % 10000;
-  drawLayer(img.bgFar, 0.15, true);
-  drawLayer(img.bgMid, 0.35, false);
-  drawLayer(img.bgNear, 0.6, false);
+  drawLayer(img.bgFar, 0.15);
+  drawLayer(img.bgMid, 0.35);
+  drawLayer(img.bgNear, 0.6);
 }
 
 function drawPipeBody(x, y, w, h, flip) {
