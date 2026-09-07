@@ -71,7 +71,12 @@
     transition: transform .06s;
     touch-action: manipulation;
     animation: btnPulse 2.4s infinite ease-in-out;
+    outline: none; border: 0;
+    user-select: none; -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
   }
+  #startBtn:focus { outline: none; }
   #startBtn:active { transform: translate(-50%, -46%) scale(1.08); animation-play-state: paused; }
   @keyframes btnPulse {
     0%, 100% { transform: translate(-50%, -50%) scale(1); filter: drop-shadow(0 6px 0 rgba(0,0,0,.35)) brightness(1); }
@@ -133,7 +138,7 @@
     <div id="score"></div>
     <div id="warn"></div>
     <img id="title" src="Assets/title.png" alt="HARIBON">
-    <img id="startBtn" src="Assets/button%20up.png" alt="Start">
+    <img id="startBtn" src="Assets/button%20up.png" alt="Start" draggable="false">
     <div id="hint">TAP / CLICK / SPACE TO FLAP</div>
     <div id="over">
       <img id="overImg" src="Assets/game%20over.png" alt="GAME OVER">
@@ -584,10 +589,20 @@ document.addEventListener('keydown', (e) => {
   }
   if (e.code === 'Enter' && S.mode !== 'play' && (S.mode !== 'over' || performance.now() - S.overAt > 600)) startGame();
 });
-startBtn.addEventListener('pointerdown', () => { startBtn.src = 'Assets/button%20down.png'; });
+const BTN_UP = 'Assets/button%20up.png', BTN_DOWN = 'Assets/button%20down.png';
+startBtn.addEventListener('dragstart', (e) => e.preventDefault());
+startBtn.addEventListener('contextmenu', (e) => e.preventDefault());
+startBtn.addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  startBtn.src = BTN_DOWN;
+  try { startBtn.setPointerCapture(e.pointerId); } catch (_) {}
+});
+const btnReset = () => { startBtn.src = BTN_UP; };
+startBtn.addEventListener('pointercancel', btnReset);
+startBtn.addEventListener('pointerleave', () => { if (S.mode === 'menu') btnReset(); });
 startBtn.addEventListener('pointerup', (e) => {
   e.preventDefault();
-  startBtn.src = 'Assets/button%20up.png';
+  btnReset();
   startGame();
 });
 
